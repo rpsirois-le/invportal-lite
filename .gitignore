@@ -1,6 +1,5 @@
 node_modules/
 build/
-deployWindowsFiles/
 package-lock.json
 .DS_Store
 *.swp
