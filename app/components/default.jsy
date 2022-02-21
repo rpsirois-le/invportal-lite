@@ -1,0 +1,15 @@
+import React from 'react'
+import * as UI from 'react-bulma-components'
+import moment from 'moment-timezone'
+
+export default class ViewDefault extends React.Component ::
+    constructor( props ) ::
+        super @ props
+
+    render() ::
+        return @ 
+            <div>
+                <span>Select a function from the links above. Feedback? Send me an email at </span>
+                <a href="mailto:rpsirois@gmail.com">rpsirois@gmail.com</a>
+                <span>.</span>
+            </div>

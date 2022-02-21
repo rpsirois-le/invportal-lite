@@ -1,0 +1,466 @@
+import React from 'react'
+import * as UI from 'react-bulma-components'
+import moment from 'moment-timezone'
+
+export default class View411 extends React.Component ::
+    constructor( props ) ::
+        super @ props
+
+        window.testApp = () => ::
+            this.setState @:
+                crn: '19-TEST'
+                filename: 'test411'
+                deputy: 'Robert Sirois'
+                eid: '13025'
+                title: 'Detective'
+                charge: 'C.R.S. 18-3-402, Sexual assault'
+                defendantName: 'Test Person'
+                defendantDob: '1/1/1901'
+                race: 'white'
+                sex: 'male'
+                hair: 'blonde'
+                eyes: 'blue'
+                height: '6\'02"'
+                weight: '180'
+                salivaSamples: true
+                aff: 'Blah\nBlah\nBlah\nBlah\nBlah'
+
+        this.state = ::
+            // app stuff
+            addItemBtnDebounce: false
+            , attachmentBTemplate: 'none'
+            // 41.1 stuff
+            , ori: 'CO0210000'
+            , oriErr: false
+
+            , crn: ''
+            , crnErr: false
+
+            , filename: ''
+            , filenameErr: false
+
+            , deputy: ''
+            , deputyErr: false
+
+            , eid: ''
+            , eidErr: false
+
+            , agency: 'El Paso County Sheriff\'s Office'
+            , agencyErr: false
+
+            , title: 'Detective'
+            , titleErr: false
+
+            , division: 'Investigations'
+            , divisionErr: false
+
+            , defendantName: ''
+            , defendantNameErr: false
+
+            , defendantDob: ''
+            , defendantDobErr: false
+
+            , race: ''
+            , raceErr: false
+
+            , sex: ''
+            , sexErr: false
+
+            , height: ''
+            , heightErr: false
+
+            , weight: ''
+            , weightErr: false
+
+            , hair: ''
+            , hairErr: false
+
+            , eyes: ''
+            , eyesErr: false
+
+            , ssn: ''
+            , ssnErr: false
+
+            , oln: ''
+            , olnErr: false
+
+            , ols: ''
+            , olsErr: false
+
+            , charge: ''
+            , chargeErr: false
+
+            , fingerprints: false
+            , palmPrints: false
+            , blood: false
+            , salivaSamples: false
+            , fingernails: false
+            , handwriting: false
+            , lineUp: false
+            , pubicHair: false
+            , examination: false
+            , measurements: false
+            , urine: false
+            , hairSample: false
+            , voice: false
+            , photographs: false
+            , clothing: false
+            , other: false
+
+            , aff: ''
+
+    onChange( e ) ::
+        const val = e.target.type == 'checkbox' ? e.target.checked : e.target.value
+
+        this.setState @:
+            [e.target.name]: val
+
+    handleGenerateClick( e ) ::
+        let formData = new FormData()
+        let isErr = false
+
+        const requiredFields = [ 'ori', 'crn', 'filename', 'deputy', 'eid', 'agency', 'title', 'division', 'defendantName', 'defendantDob', 'race', 'sex', 'height', 'weight', 'hair', 'eyes', 'charge' ]
+
+        requiredFields.forEach @ field => ::
+            if !this.state[field] ::
+                isErr = true
+                this.setState @:
+                    [`${ field }Err`]: 'Required'
+            else ::
+                this.setState @:
+                    [`${ field }Err`]: false
+
+                formData.append @ field, this.state[field]
+
+        formData.append @ 'affidavit', this.state.aff
+        formData.append @ 'ssn', this.state.ssn
+
+        // contingent required
+        if this.state.ols || this.state.oln ::
+            if this.state.ols && !this.state.oln ::
+                this.setState @:
+                    olnErr: 'OLN is required if OLS is specified.'
+            else if !this.state.ols && this.state.oln ::
+                this.setState @:
+                    olsErr: 'OLS is required is OLN is specified.'
+            else ::
+                this.setState @:
+                    olsErr: false
+                    , olnErr: false
+
+                formData.append @ 'ols', this.state.ols
+                formData.append @ 'oln', this.state.oln
+        else ::
+            this.setState @:
+                olsErr: false
+                olnErr: false
+
+        const checkboxes = [ 'fingerprints', 'palmPrints', 'blood', 'salivaSamples', 'fingernails', 'handwriting', 'lineUp', 'pubicHair', 'examination', 'measurements', 'urine', 'hairSample', 'voice', 'photographs', 'clothing', 'other' ]
+
+        checkboxes.forEach @ field => ::
+            formData.append @ field, this.state[field]
+
+        if !isErr ::
+            this.setState @:
+                processing: true
+
+            fetch @ '/411', @{}
+                method: 'post'
+                body: formData
+            .then @ res => res.json().then @ data => ::
+                this.setState @:
+                    processing: false
+
+                window.open @ `/download/${ data.filename }`, '_blank'
+
+    render() ::
+        return @
+            <UI.Container>
+                <UI.Heading size={1}>Rule 41.1 Court Order Form</UI.Heading>
+                
+                <UI.Heading size={3} style={{ margin: 10 }}><UI.Icon color="info"><span className="fas fa-info"/></UI.Icon><span style={{ margin: 10 }}>General Information</span></UI.Heading>
+
+                {/*
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>ORI</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input className={ this.state.oriErr ? 'is-danger' : '' }onChange={ e => this.onChange( e ) } type="text" placeholder="ORI" name="ori" value={ this.state.ori } />
+                            </UI.Form.Control>
+                            { this.state.oriErr && <p className='help is-danger'>{ this.state.oriErr }</p> }
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                */}
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Case Number</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Case Number" name="crn" value={ this.state.crn } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Filename</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Filename" name="filename" value={ this.state.filename } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Deputy Name</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Deputy Name" name="deputy" value={ this.state.deputy } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>EID/IBM</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="EID/IBM" name="eid" value={ this.state.eid } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Title</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Title" name="title" value={ this.state.title } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                        {/*
+                        <UI.Form.Field>
+                            <UI.Form.Label>Agency</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="agency" name="agency" value={ this.state.agency } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                        */}
+                        <UI.Form.Field>
+                            <UI.Form.Label>Division</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Division" name="division" value={ this.state.division } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                {/*
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Division</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Division" name="division" value={ this.state.division } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                */}
+
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Charge</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input className={ this.state.chargeErr ? 'is-danger' : '' } onChange={ e => this.onChange( e ) } type="text" placeholder="Charge" name="charge" value={ this.state.charge } />
+                            </UI.Form.Control>
+                            { this.state.chargeErr && <p className='help is-danger'>{ this.state.chargeErr }</p> }
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+
+                <UI.Heading size={3} style={{ margin: 10 }}><UI.Icon color="info"><span className="fas fa-user"/></UI.Icon><span style={{ margin: 10 }}>Subject Description</span></UI.Heading>
+
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Name</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Name" name="defendantName" value={ this.state.defendantName } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Date of Birth</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Date of Birth" name="defendantDob" value={ this.state.defendantDob } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Race</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Race" name="race" value={ this.state.race } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Sex</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Sex" name="sex" value={ this.state.sex } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Height</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Height" name="height" value={ this.state.height } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Weight</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Weight" name="weight" value={ this.state.weight } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Hair</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Hair" name="hair" value={ this.state.hair } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Eyes</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Eyes" name="eyes" value={ this.state.eyes } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Social Security Number (Optional)</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Social Security Number" name="ssn" value={ this.state.ssn } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Operator License State (Optional)</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Operator License State" name="ols" value={ this.state.ols } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Operator License Number (Optional)</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Operator License Number" name="oln" value={ this.state.oln } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+
+                <UI.Heading size={3} style={{ margin: 10 }}><UI.Icon color="info"><span className="fas fa-user"/></UI.Icon><span style={{ margin: 10 }}>Location and Purpose</span></UI.Heading>
+
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="fingerprints" checked={ this.state.fingerprints }>&nbsp;Fingerprints</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="palmPrints" checked={ this.state.palmPrints }>&nbsp;Palm Prints</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="blood" checked={ this.state.blood }>&nbsp;Blood Specimen</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="salivaSamples" checked={ this.state.salivaSamples }>&nbsp;Saliva Samples</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="fingernails" checked={ this.state.fingernails }>&nbsp;Specimens of material under fingernails</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="handwriting" checked={ this.state.handwriting }>&nbsp;Handwriting Exemplars</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="lineUp" checked={ this.state.lineUp }>&nbsp;Appearing in line-ups</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="pubicHair" checked={ this.state.pubicHair }>&nbsp;Pubic Hair Combings</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="examination" checked={ this.state.examination }>&nbsp;Physical and/or medical examination</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="measurements" checked={ this.state.measurements }>&nbsp;Measurements</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="urine" checked={ this.state.urine }>&nbsp;Urine Specimen</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="hairSample" checked={ this.state.hairSample }>&nbsp;Hair Samples</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="voice" checked={ this.state.voice }>&nbsp;Voice Samples</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="photographs" checked={ this.state.photographs }>&nbsp;Photographs</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="clothing" checked={ this.state.clothing }>&nbsp;Trying on articles of clothing</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="other" checked={ this.state.other }>&nbsp;Other or N/A</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+
+                <UI.Heading size={3} style={{ margin: 10 }}><UI.Icon color="info"><span className="fas fa-gavel"/></UI.Icon><span style={{ margin: 10 }}>Affidavit</span></UI.Heading>
+
+                <UI.Form.Field>
+                    <UI.Form.Label>Affidavit</UI.Form.Label>
+                    <UI.Form.Control>
+                        <UI.Form.Textarea onChange={ e => this.onChange( e ) } name="aff" value={ this.state.aff } />
+                    </UI.Form.Control>
+                    <p className="help">Optional - leave this blank and paste in your affdavit after downloading.</p>
+                </UI.Form.Field>
+
+
+                <UI.Button color="info" onClick={ e => this.handleGenerateClick( e ) }><UI.Icon><span className="fas fa-file-pdf"/></UI.Icon><span>Generate 41.1</span></UI.Button>
+                <UI.Button color="info" onClick={ e => this.handleROEClick( e ) }><UI.Icon><span className="fas fa-file-pdf"/></UI.Icon><span>Generate ROE</span></UI.Button>
+            </UI.Container>

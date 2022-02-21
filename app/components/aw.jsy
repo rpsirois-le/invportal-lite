@@ -1,0 +1,539 @@
+import React from 'react'
+import * as UI from 'react-bulma-components'
+import moment from 'moment-timezone'
+
+// https://jsy-lang.github.io/#GYVwdgxgLglg9mABAQwCaoCowLYFM4hQCiAbrmFABQB0tyATgOYDOAlIgFwcBQii9uKCHpJmgrHgJREAARRNm1AA5wllVgBpEtagxbcDaTDnyFS5aXICsABhsbuASBkBeAHyIoACxiKxUAGUoZChcWQ5EACMoMAARXEiCSFwI4GQAGzFuIA
+function addTimeoutEvent(...args) ::
+  return setTimeout @ args.pop(), ...args
+
+export default class ViewAW extends React.Component ::
+    constructor( props ) ::
+        super @ props
+
+        window.testApp = () => ::
+            this.setState @:
+                crn: '19-TEST'
+                , filename: 'testaw'
+                , deputy: 'Robert Sirois'
+                , eid: '13025'
+                , title: 'Detective'
+                , defendantName: 'Test Person'
+                , defendantDob: '1/1/1901'
+                , race: 'white'
+                , sex: 'male'
+                , hair: 'blonde'
+                , eyes: 'blue'
+                , height: '6\'02"'
+                , weight: '180'
+                , bond: '1,000'
+                , charges: 'C.R.S. 18-9-111, Harassment, M3\nC.R.S. 18-6-800.3, Domestic violence (definitions)'
+                , aff: 'Blah\nBlah\nBlah\nBlah\nBlah'
+
+        this.state = ::
+            // app stuff
+            vicBtnDebounce: false
+            , processing: false
+            , sealSection: false
+            // pc stuff
+            , ori: 'CO0210000'
+            , oriErr: false
+
+            , crn: ''
+            , crnErr: false
+
+            , filename: ''
+            , filenameErr: false
+
+            , deputy: ''
+            , deputyErr: false
+
+            , eid: ''
+            , eidErr: false
+
+            , agency: 'El Paso County Sheriff\'s Office'
+            , agencyErr: false
+
+            , title: 'Detective'
+            , titleErr: false
+
+            , defendantName: ''
+            , defendantNameErr: false
+
+            , defendantDob: ''
+            , defendantDobErr: false
+
+            , race: ''
+            , raceErr: false
+
+            , sex: ''
+            , sexErr: false
+
+            , height: ''
+            , heightErr: false
+
+            , weight: ''
+            , weightErr: false
+
+            , hair: ''
+            , hairErr: false
+
+            , eyes: ''
+            , eyesErr: false
+
+            , ssn: ''
+            , ssnErr: false
+
+            , oln: ''
+            , olnErr: false
+
+            , ols: ''
+            , olsErr: false
+
+            , charges: ''
+            , chargesErr: false
+
+            , aff: ''
+
+            , victims: []
+            , victimsErr: false
+
+            // prelim stuff
+            , bondingInformation: 'Standard bond.'
+            , bondingInformationErr: false
+
+            , bond: ''
+            , bondErr: false
+
+            // seal stuff
+            , dda: ''
+            , ddaErr: false
+
+    onChange( e ) ::
+        const val = e.target.type == 'checkbox' ? e.target.checked : e.target.value
+
+        if e.target.name.startsWith @ 'victims' ::
+            let idx, key
+            let vars = e.target.name.match @ /\[.*?\]/g
+
+            vars.map @ ( v, i ) => ::
+                if i == 0 ::
+                    idx = v
+                    idx = idx.replace @ '[', ''
+                    idx = idx.replace @ ']', ''
+                    idx = parseInt @ idx
+                else if i == 1 ::
+                    key = v
+                    key = key.replace @ '[', ''
+                    key = key.replace @ ']', ''
+
+            this.setState @ state => ::
+                const victims = this.state.victims.map @ ( v, j ) => ::
+                    if idx == j ::
+                        v[key] = val
+                        return v
+                    else ::
+                        return v
+                return @:
+                    victims
+        else ::
+            this.setState @:
+                [e.target.name]: val
+
+    handleVicBtnClick( e ) ::
+        this.state.victims.push @:
+            name: ''
+            , dob: ''
+
+        this.setState @:
+            vicBtnDebounce: true
+
+        addTimeoutEvent @ 500,
+            @ () => this.setState @: vicBtnDebounce: false
+
+    handleIncludeSealClick( e ) ::
+        this.setState @:
+            sealSection: true
+
+    handleGenerateClick( e ) ::
+        let formData = new FormData()
+        let isErr = false
+
+        const requiredFields = [ 'ori', 'crn', 'filename', 'deputy', 'eid', 'agency', 'title', 'defendantName', 'defendantDob', 'race', 'sex', 'height', 'weight', 'hair', 'eyes', 'bond', 'charges' ]
+
+        formData.append @ 'affidavit', this.state.aff
+        formData.append @ 'ssn', this.state.ssn
+
+        requiredFields.forEach @ field => ::
+            if !this.state[field] ::
+                isErr = true
+                this.setState @:
+                    [`${ field }Err`]: 'Required'
+            else ::
+                this.setState @:
+                    [`${ field }Err`]: false
+
+                formData.append @ field, this.state[field]
+
+        // contingent required
+        if this.state.ols || this.state.oln ::
+            if this.state.ols && !this.state.oln ::
+                this.setState @:
+                    olnErr: 'OLN is required if OLS is specified.'
+            else if !this.state.ols && this.state.oln ::
+                this.setState @:
+                    olsErr: 'OLS is required is OLN is specified.'
+            else ::
+                this.setState @:
+                    olsErr: false
+                    , olnErr: false
+
+                formData.append @ 'ols', this.state.ols
+                formData.append @ 'oln', this.state.oln
+        else ::
+            this.setState @:
+                olsErr: false
+                , olnErr: false
+
+        formData.append @ 'victims', JSON.stringify @ this.state.victims
+
+        if !isErr ::
+            this.setState @:
+                processing: true
+
+            fetch @ '/arrestwarrant', ::
+                method: 'post'
+                , body: formData
+            .then @ res => ::
+                if res.ok ::
+                    res.json().then @ data => ::
+                        this.setState @:
+                            processing: false
+
+                        window.open @ `/download/${ data.filename }`, '_blank'
+                else ::
+                    console.log @ 'There was a problem - see server log for details.'
+
+    handleGenerateFilingDecisionClick( e, uri ) ::
+        let formData = new FormData()
+        let isErr = false
+
+        let requiredFields = [ 'crn', 'filename', 'deputy', 'eid', 'agency', 'title', 'defendantName', 'defendantDob', 'charges' ]
+
+        requiredFields.forEach @ field => ::
+            if !this.state[field] ::
+                isErr = true
+                this.setState @:
+                    [`${ field }Err`]: 'Required'
+            else ::
+                this.setState @:
+                    [`${ field }Err`]: false
+
+                formData.append @ field, this.state[field]
+
+        formData.append @ 'victims', JSON.stringify @ this.state.victims
+        formData.append @ 'type', 'filingdecision'
+
+        if !isErr ::
+            this.setState @:
+                processing: true
+
+            fetch @ `/filingdecision`, ::
+                method: 'post'
+                , body: formData
+            .then @ res => res.json().then @ data => ::
+                this.setState @:
+                    processing: false
+
+                window.open @ `/download/${ data.filename }`, '_blank'
+
+    handleGenerateSealClick( e ) ::
+        let formData = new FormData()
+        let isErr = false
+
+        const requiredFields = [ 'crn', 'filename', 'defendantName', 'defendantDob', 'dda' ]
+
+        requiredFields.forEach @ field => ::
+            if !this.state[field] ::
+                isErr = true
+                this.setState @:
+                    [`${ field }Err`]: 'Required'
+            else ::
+                this.setState @:
+                    [`${ field }Err`]: false
+
+                formData.append @ field, this.state[field]
+
+        if !isErr ::
+            this.setState @:
+                processing: true
+
+            fetch @ '/awSeal', ::
+                method: 'post'
+                , body: formData
+            .then @ res => res.json().then @ data => ::
+                this.setState @:
+                    processing: false
+
+                window.open @ `/download/${ data.filename }`, '_blank'
+
+    render() ::
+        return @
+            <UI.Container>
+                <UI.Heading size={1}>Arrest Warrant Form</UI.Heading>
+                
+                <UI.Heading size={3} style={{ margin: 10 }}><UI.Icon color="info"><span className="fas fa-info"/></UI.Icon><span style={{ margin: 10 }}>General Information</span></UI.Heading>
+
+                {/*
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>ORI</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input className={ this.state.oriErr ? 'is-danger' : '' }onChange={ e => this.onChange( e ) } type="text" placeholder="ORI" name="ori" value={ this.state.ori } />
+                            </UI.Form.Control>
+                            { this.state.oriErr && <p className='help is-danger'>{ this.state.oriErr }</p> }
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                */}
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Case Number</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Case Number" name="crn" value={ this.state.crn } />
+                            </UI.Form.Control>
+                            { this.state.crnErr && <p className='help is-danger'>{ this.state.crnErr }</p> }
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Filename</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Filename" name="filename" value={ this.state.filename } />
+                            </UI.Form.Control>
+                            { this.state.filenameErr && <p className='help is-danger'>{ this.state.filenameErr }</p> }
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Deputy Name</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Deputy Name" name="deputy" value={ this.state.deputy } />
+                            </UI.Form.Control>
+                            { this.state.deputyErr && <p className='help is-danger'>{ this.state.deputyErr }</p> }
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>EID/IBM</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="EID/IBM" name="eid" value={ this.state.eid } />
+                            </UI.Form.Control>
+                            { this.state.eidErr && <p className='help is-danger'>{ this.state.eidErr }</p> }
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Title</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Title" name="title" value={ this.state.title } />
+                            </UI.Form.Control>
+                            { this.state.titleErr && <p className='help is-danger'>{ this.state.titleErr }</p> }
+                        </UI.Form.Field>
+                        {/*
+                        <UI.Form.Field>
+                            <UI.Form.Label>Agency</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="agency" name="agency" value={ this.state.agency } />
+                            </UI.Form.Control>
+                            { this.state.agencyErr && <p className='help is-danger'>{ this.state.agencyErr }</p> }
+                        </UI.Form.Field>
+                        */}
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+
+                <UI.Heading size={3} style={{ margin: 10 }}><UI.Icon color="info"><span className="fas fa-user"/></UI.Icon><span style={{ margin: 10 }}>Subject Description</span></UI.Heading>
+
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Name</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Name" name="defendantName" value={ this.state.defendantName } />
+                            </UI.Form.Control>
+                            { this.state.defendantNameErr && <p className='help is-danger'>{ this.state.defendantNameErr }</p> }
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Date of Birth</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Date of Birth" name="defendantDob" value={ this.state.defendantDob } />
+                            </UI.Form.Control>
+                            { this.state.defendantDobErr && <p className='help is-danger'>{ this.state.defendantDobErr }</p> }
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Race</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Race" name="race" value={ this.state.race } />
+                            </UI.Form.Control>
+                            { this.state.raceErr && <p className='help is-danger'>{ this.state.raceErr }</p> }
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Sex</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Sex" name="sex" value={ this.state.sex } />
+                            </UI.Form.Control>
+                            { this.state.sexErr && <p className='help is-danger'>{ this.state.sexErr }</p> }
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Height</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Height" name="height" value={ this.state.height } />
+                            </UI.Form.Control>
+                            { this.state.heightErr && <p className='help is-danger'>{ this.state.heightErr }</p> }
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Weight</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Weight" name="weight" value={ this.state.weight } />
+                            </UI.Form.Control>
+                            { this.state.weightErr && <p className='help is-danger'>{ this.state.weightErr }</p> }
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Hair</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Hair" name="hair" value={ this.state.hair } />
+                            </UI.Form.Control>
+                            { this.state.hairErr && <p className='help is-danger'>{ this.state.hairErr }</p> }
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Eyes</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Eyes" name="eyes" value={ this.state.eyes } />
+                            </UI.Form.Control>
+                            { this.state.eyesErr && <p className='help is-danger'>{ this.state.eyesErr }</p> }
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Social Security Number (Optional)</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Social Security Number" name="ssn" value={ this.state.ssn } />
+                            </UI.Form.Control>
+                            { this.state.ssnErr && <p className='help is-danger'>{ this.state.ssnErr }</p> }
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Operator License State (Optional)</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Operator License State" name="ols" value={ this.state.ols } />
+                            </UI.Form.Control>
+                            { this.state.olsErr && <p className='help is-danger'>{ this.state.olsErr }</p> }
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Operator License Number (Optional)</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Operator License Number" name="oln" value={ this.state.oln } />
+                            </UI.Form.Control>
+                            { this.state.olnErr && <p className='help is-danger'>{ this.state.olnErr }</p> }
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+
+                <UI.Heading size={3} style={{ margin: 10 }}><UI.Icon color="info"><span className="fas fa-user-friends"/></UI.Icon><span style={{ margin: 10 }}>Victims</span></UI.Heading>
+
+                { this.state.victims.map @ ( victim, idx ) => ::
+                    return @
+                        <UI.Box key={`vic${idx}`}>
+                            <UI.Heading size={4}>Victim {`${idx+1}`}</UI.Heading>
+                            <UI.Form.Field horizontal>
+                                <UI.Form.Field.Body>
+                                    <UI.Form.Field>
+                                        <UI.Form.Label>Name</UI.Form.Label>
+                                        <UI.Form.Control>
+                                            <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Name" name={`victims[${idx}][name]`} value={ victim.name } />
+                                        </UI.Form.Control>
+                                    </UI.Form.Field>
+                                    <UI.Form.Field>
+                                        <UI.Form.Label>Date of Birth</UI.Form.Label>
+                                        <UI.Form.Control>
+                                            <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Date of Birth" name={`victims[${idx}][dob]`} value={ victim.dob } />
+                                        </UI.Form.Control>
+                                    </UI.Form.Field>
+                                </UI.Form.Field.Body>
+                            </UI.Form.Field>
+                        </UI.Box>
+                }
+
+                <UI.Button disabled={this.state.vicBtnDebounce} onClick={ e => this.handleVicBtnClick( e ) }><UI.Icon><span className="fas fa-user-plus"/></UI.Icon><span>Add Victim</span></UI.Button>
+
+                <UI.Heading size={3} style={{ margin: 10 }}><UI.Icon color="info"><span className="fas fa-gavel"/></UI.Icon><span style={{ margin: 10 }}>Charges, Bond, and Affidavit</span></UI.Heading>
+                <UI.Heading subtitle>View bond schedule <a href="../static/Bond Schedule.pdf" target="_blank">here</a>.</UI.Heading>
+
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Bond</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Bond" name="bond" value={ this.state.bond } />
+                            </UI.Form.Control>
+                            { this.state.bondErr && <p className='help is-danger'>{ this.state.bondErr }</p> }
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Label>Charges (Specify each charge on its own line.)</UI.Form.Label>
+                    <UI.Form.Control>
+                        <UI.Form.Textarea onChange={ e => this.onChange( e ) } name="charges" value={ this.state.charges } />
+                    </UI.Form.Control>
+                    { this.state.chargesErr && <p className='help is-danger'>{ this.state.chargesErr }</p> }
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Label>Affidavit</UI.Form.Label>
+                    <UI.Form.Control>
+                        <UI.Form.Textarea onChange={ e => this.onChange( e ) } name="aff" value={ this.state.aff } />
+                    </UI.Form.Control>
+                    <p className="help">Optional - leave this blank and paste in your affdavit after downloading.</p>
+                </UI.Form.Field>
+
+
+                <UI.Button color="info" onClick={ e => this.handleGenerateClick( e ) }><UI.Icon><span className="fas fa-file-pdf"/></UI.Icon><span>Generate Warrant</span></UI.Button>
+                <UI.Button color="info" onClick={ e => this.handleGenerateFilingDecisionClick( e ) }><UI.Icon><span className="fas fa-file-pdf"/></UI.Icon><span>Generate Filing Decision</span></UI.Button>
+                <UI.Button onClick={ e => this.handleIncludeSealClick( e ) }><UI.Icon><span className="fas fa-plus"/></UI.Icon><span>Include Seal</span></UI.Button>
+
+                { this.state.sealSection &&
+                    <div>
+                        <UI.Form.Field horizontal>
+                            <UI.Form.Field.Body>
+                                <UI.Form.Field>
+                                    <UI.Form.Label>Deputy District Attorney</UI.Form.Label>
+                                    <UI.Form.Control>
+                                        <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Deputy District Attorney" name='dda' value={ this.state.dda } />
+                                    </UI.Form.Control>
+                                    { this.state.ddaErr && <p className='help is-danger'>{ this.state.ddaErr }</p> }
+                                </UI.Form.Field>
+                            </UI.Form.Field.Body>
+                        </UI.Form.Field>
+                        
+                        <UI.Button color="info" onClick={ e => this.handleGenerateSealClick( e ) }><UI.Icon><span className="fas fa-file-pdf"/></UI.Icon><span>Generate Seal</span></UI.Button>
+                    </div>
+                }
+            </UI.Container>
+

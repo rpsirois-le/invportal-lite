@@ -1,0 +1,13 @@
+import React from 'react'
+import * as UI from 'react-bulma-components'
+import moment from 'moment-timezone'
+
+export default class ViewSearchWaiver extends React.Component ::
+    constructor( props ) ::
+        super @ props
+
+    render() ::
+        return @
+            <UI.Container>
+                <p>Search Waiver</p>
+            </UI.Container>

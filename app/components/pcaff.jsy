@@ -1,0 +1,436 @@
+import React from 'react'
+import * as UI from 'react-bulma-components'
+import moment from 'moment-timezone'
+
+// https://jsy-lang.github.io/#GYVwdgxgLglg9mABAQwCaoCowLYFM4hQCiAbrmFABQB0tyATgOYDOAlIgFwcBQii9uKCHpJmgrHgJREAARRNm1AA5wllVgBpEtagxbcDaTDnyFS5aXICsABhsbuASBkBeAHyIoACxiKxUAGUoZChcWQ5EACMoMAARXEiCSFwI4GQAGzFuIA
+function addTimeoutEvent(...args) ::
+  return setTimeout @ args.pop(), ...args
+
+export default class ViewPCAff extends React.Component ::
+    constructor( props ) ::
+        super @ props
+
+        window.testApp = () => ::
+            this.setState @:
+                crn: '19-TEST'
+                , filename: 'testpc'
+                , deputy: 'Robert Sirois'
+                , eid: '13025'
+                , title: 'Detective'
+                , location: '27 East Vermijo Ave'
+                , defendantName: 'Test Person'
+                , defendantDob: '1/1/1901'
+                , victims: [ { name: 'State of Colorado', dob: '', race: '', sex: '' } ]
+                , charges: 'C.R.S. 18-9-111, Harassment, M3\nC.R.S. 18-6-800.3, Domestic violence (definitions)'
+                , affidavit: 'Blah\nBlah\nBlah\nBlah\nBlah'
+                , bond: '1,000'
+
+        this.state = ::
+            // app stuff
+            vicBtnDebounce: false
+            , coDefBtnDebounce: false
+            , additionalSection: false
+            , showDvmBtn: false
+            // pc stuff
+            , crn: ''
+            , crnErr: false
+
+            , filename: ''
+            , filenameErr: false
+
+            , deputy: ''
+            , deputyErr: false
+
+            , eid: ''
+            , eidErr: false
+
+            , agency: 'El Paso County Sheriff\'s Office'
+            , agencyErr: false
+
+            , title: 'Detective'
+            , titleErr: false
+
+            , location: ''
+            , locationErr: false
+
+            , defendantName: ''
+            , defendantNameErr: false
+
+            , defendantDob: ''
+            , defendantDobErr: false
+
+            , charges: ''
+            , chargesErr: false
+
+            , affidavit: ''
+
+            , codefendants: []
+            , victims: @[]
+                ::
+                    name: ''
+                    , dob: ''
+                    , race: ''
+                    , sex: ''
+            // prelim stuff
+            , arrestedDate: moment().format @ 'YYYY-MM-DD'
+            , arrestedDateErr: false
+
+            , bondingInformation: 'Standard bond.'
+            , bondingInformationErr: false
+
+            , bond: ''
+            , bondErr: false
+
+            , division: 'Investigations'
+            , divisionErr: false
+
+    onChange( e ) ::
+        const val = e.target.type == 'checkbox' ? e.target.checked : e.target.value
+
+        if e.target.name.startsWith @ 'victims' ::
+            let idx, key
+            let vars = e.target.name.match @ /\[.*?\]/g
+
+            vars.map @ ( v, i ) => ::
+                if i == 0 ::
+                    idx = v
+                    idx = idx.replace @ '[', ''
+                    idx = idx.replace @ ']', ''
+                    idx = parseInt @ idx
+                else if i == 1 ::
+                    key = v
+                    key = key.replace @ '[', ''
+                    key = key.replace @ ']', ''
+
+            this.setState @ state => ::
+                const victims = this.state.victims.map @ ( v, j ) => ::
+                    if idx == j ::
+                        v[key] = val
+                        return v
+                    else ::
+                        return v
+                return @:
+                    victims
+        else if e.target.name.startsWith @ 'codefendants' ::
+            let idx, key
+            let vars = e.target.name.match @ /\[.*?\]/g
+
+            vars.map @ ( v, i ) => ::
+                if i == 0 ::
+                    idx = v
+                    idx = idx.replace @ '[', ''
+                    idx = idx.replace @ ']', ''
+                    idx = parseInt @ idx
+                else if i == 1 ::
+                    key = v
+                    key = key.replace @ '[', ''
+                    key = key.replace @ ']', ''
+
+            this.setState @ state => ::
+                const codefendants = this.state.codefendants.map @ ( v, j ) => ::
+                    if idx == j ::
+                        v[key] = val
+                        return v
+                    else ::
+                        return v
+                return @:
+                    codefendants
+        else ::
+            this.setState @:
+                [e.target.name]: val
+
+    handleCoDefBtnClick( e ) ::
+        this.state.codefendants.push @:
+            name: ''
+            , dob: ''
+
+        this.setState @:
+            coDefBtnDebounce: true
+
+        addTimeoutEvent @ 500,
+            @ () => this.setState @: coDefBtnDebounce: false
+
+    handleVicBtnClick( e ) ::
+        this.state.victims.push @:
+            name: ''
+            , dob: ''
+            , race: ''
+            , sex: ''
+
+        this.setState @:
+            vicBtnDebounce: true
+
+        addTimeoutEvent @ 500,
+            @ () => this.setState @: vicBtnDebounce: false
+
+    handleIncludePrelimClick( e ) ::
+        this.setState @:
+            additionalSection: true
+
+    handleIncludeDvmComplaintClick( e ) ::
+        this.setState @:
+            additionalSection: true
+            , showDvmBtn: true
+
+    handleGenerateClick( e, uri ) ::
+        let formData = new FormData()
+        let isErr = false
+
+        let requiredFields = [ 'crn', 'filename', 'deputy', 'eid', 'agency', 'title', 'location', 'defendantName', 'defendantDob', 'charges' ]
+
+        formData.append @ 'affidavit', this.state.affidavit
+
+        if this.state.additionalSection ::
+            requiredFields = requiredFields.concat @ [ 'arrestedDate', 'bondingInformation', 'bond', 'division' ]
+
+        requiredFields.forEach @ field => ::
+            if !this.state[field] ::
+                isErr = true
+                this.setState @:
+                    [`${ field }Err`]: 'Required'
+            else ::
+                this.setState @:
+                    [`${ field }Err`]: false
+
+                formData.append @ field, this.state[field]
+
+        formData.append @ 'codefendants', JSON.stringify @ this.state.codefendants
+        formData.append @ 'victims', JSON.stringify @ this.state.victims
+        formData.append @ 'type', uri
+
+        if !isErr ::
+            this.setState @:
+                processing: true
+
+            fetch @ `/${ uri }`, ::
+                method: 'post'
+                , body: formData
+            .then @ res => res.json().then @ data => ::
+                this.setState @:
+                    processing: false
+
+                window.open @ `/download/${ data.filename }`, '_blank'
+
+    render() ::
+        return @
+            <UI.Container>
+                <UI.Heading size={1}>PC Affidavit Form</UI.Heading>
+                
+                <UI.Heading size={3} style={{ margin: 10 }}><UI.Icon color="info"><span className="fas fa-info"/></UI.Icon><span style={{ margin: 10 }}>General Information</span></UI.Heading>
+
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Case Number</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Case Number" name="crn" value={ this.state.crn } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Filename</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Filename" name="filename" value={ this.state.filename } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Deputy Name</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Deputy Name" name="deputy" value={ this.state.deputy } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>EID/IBM</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="EID/IBM" name="eid" value={ this.state.eid } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Title</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Title" name="title" value={ this.state.title } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                        {/*
+                        <UI.Form.Field>
+                            <UI.Form.Label>Agency</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="agency" name="agency" value={ this.state.agency } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                        */}
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Address of Occurrence</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Location" name="location" value={ this.state.location } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+
+                <UI.Heading size={3} style={{ margin: 10 }}><UI.Icon color="info"><span className="fas fa-user"/></UI.Icon><span style={{ margin: 10 }}>Defendant</span></UI.Heading>
+
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Name</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Name" name="defendantName" value={ this.state.defendantName } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Date of Birth</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Date of Birth" name="defendantDob" value={ this.state.defendantDob } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+
+                <UI.Heading size={3} style={{ margin: 10 }}><UI.Icon color="info"><span className="fas fa-users"/></UI.Icon><span style={{ margin: 10 }}>Co-Defendants</span></UI.Heading>
+
+                { this.state.codefendants.map @ ( codef, idx ) => ::
+                    return @
+                        <UI.Box key={`codef${idx}`}>
+                            <UI.Heading size={4}>Co-Defendant {`${idx+1}`}</UI.Heading>
+                            <UI.Form.Field horizontal>
+                                <UI.Form.Field.Body>
+                                    <UI.Form.Field>
+                                        <UI.Form.Label>Name</UI.Form.Label>
+                                        <UI.Form.Control>
+                                            <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Name" name={`codefendants[${idx}][name]`} value={ codef.name } />
+                                        </UI.Form.Control>
+                                    </UI.Form.Field>
+                                    <UI.Form.Field>
+                                        <UI.Form.Label>Date of Birth</UI.Form.Label>
+                                        <UI.Form.Control>
+                                            <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Date of Birth" name={`codefendants[${idx}][dob]`} value={ codef.dob } />
+                                        </UI.Form.Control>
+                                    </UI.Form.Field>
+                                </UI.Form.Field.Body>
+                            </UI.Form.Field>
+                        </UI.Box>
+                }
+
+                <UI.Button disabled={this.state.coDefBtnDebounce} onClick={ e => this.handleCoDefBtnClick( e ) }><UI.Icon><span className="fas fa-user-plus"/></UI.Icon><span>Add Co-Defendant</span></UI.Button>
+
+                <UI.Heading size={3} style={{ margin: 10 }}><UI.Icon color="info"><span className="fas fa-user-friends"/></UI.Icon><span style={{ margin: 10 }}>Victims</span></UI.Heading>
+                <UI.Heading subtitle>At least one victim is required. If name is not "State of Colorado", then all fields are required.</UI.Heading>
+
+                { this.state.victims.map @ ( victim, idx ) => ::
+                    return @
+                        <UI.Box key={`vic${idx}`}>
+                            <UI.Heading size={4}>Victim {`${idx+1}`}</UI.Heading>
+                            <UI.Form.Field horizontal>
+                                <UI.Form.Field.Body>
+                                    <UI.Form.Field>
+                                        <UI.Form.Label>Name</UI.Form.Label>
+                                        <UI.Form.Control>
+                                            <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Name" name={`victims[${idx}][name]`} value={ victim.name } />
+                                        </UI.Form.Control>
+                                    </UI.Form.Field>
+                                    <UI.Form.Field>
+                                        <UI.Form.Label>Date of Birth</UI.Form.Label>
+                                        <UI.Form.Control>
+                                            <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Date of Birth" name={`victims[${idx}][dob]`} value={ victim.dob } />
+                                        </UI.Form.Control>
+                                    </UI.Form.Field>
+                                </UI.Form.Field.Body>
+                            </UI.Form.Field>
+                            <UI.Form.Field horizontal>
+                                <UI.Form.Field.Body>
+                                    <UI.Form.Field>
+                                        <UI.Form.Label>Race</UI.Form.Label>
+                                        <UI.Form.Control>
+                                            <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Race" name={`victims[${idx}][race]`} value={ victim.race } />
+                                        </UI.Form.Control>
+                                    </UI.Form.Field>
+                                    <UI.Form.Field>
+                                        <UI.Form.Label>Sex</UI.Form.Label>
+                                        <UI.Form.Control>
+                                            <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Sex" name={`victims[${idx}][sex]`} value={ victim.sex } />
+                                        </UI.Form.Control>
+                                    </UI.Form.Field>
+                                </UI.Form.Field.Body>
+                            </UI.Form.Field>
+                        </UI.Box>
+                }
+
+                <UI.Button disabled={this.state.vicBtnDebounce} onClick={ e => this.handleVicBtnClick( e ) }><UI.Icon><span className="fas fa-user-plus"/></UI.Icon><span>Add Victim</span></UI.Button>
+
+                <UI.Heading size={3} style={{ margin: 10 }}><UI.Icon color="info"><span className="fas fa-gavel"/></UI.Icon><span style={{ margin: 10 }}>Charges and Affidavit</span></UI.Heading>
+
+                <UI.Form.Field>
+                    <UI.Form.Label>Charges (Specify each charge on its own line.)</UI.Form.Label>
+                    <UI.Form.Control>
+                        <UI.Form.Textarea onChange={ e => this.onChange( e ) } name="charges" value={ this.state.charges } />
+                    </UI.Form.Control>
+                </UI.Form.Field>
+
+                <UI.Form.Field>
+                    <UI.Form.Label>Affidavit</UI.Form.Label>
+                    <UI.Form.Control>
+                        <UI.Form.Textarea onChange={ e => this.onChange( e ) } name="affidavit" value={ this.state.affidavit } />
+                    </UI.Form.Control>
+                    <p className="help">Optional - leave this blank and paste in your affdavit after downloading.</p>
+                </UI.Form.Field>
+
+
+                <UI.Button color="info" onClick={ e => this.handleGenerateClick( e, 'pcaffidavit' ) }><UI.Icon><span className="fas fa-file-pdf"/></UI.Icon><span>Generate PC Affidavit</span></UI.Button>
+                <UI.Button onClick={ e => this.handleIncludePrelimClick( e ) }><UI.Icon><span className="fas fa-plus"/></UI.Icon><span>Include Prelim</span></UI.Button>
+                <UI.Button onClick={ e => this.handleIncludeDvmComplaintClick( e ) }><UI.Icon><span className="fas fa-plus"/></UI.Icon><span>Include DVM Complaint</span></UI.Button>
+
+                { this.state.additionalSection &&
+                    <div>
+                        <UI.Form.Field horizontal>
+                            <UI.Form.Field.Body>
+                                <UI.Form.Field>
+                                    <UI.Form.Label>Arrested Date</UI.Form.Label>
+                                    <UI.Form.Control>
+                                        <UI.Form.Input onChange={ e => this.onChange( e ) } type="date" name='arrestedDate' value={ this.state.arrestedDate } />
+                                    </UI.Form.Control>
+                                </UI.Form.Field>
+                                <UI.Form.Field>
+                                    <UI.Form.Label>Division</UI.Form.Label>
+                                    <UI.Form.Control>
+                                        <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Patrol" name='division' value={ this.state.division } />
+                                    </UI.Form.Control>
+                                </UI.Form.Field>
+                            </UI.Form.Field.Body>
+                        </UI.Form.Field>
+                        <UI.Form.Field horizontal>
+                            <UI.Form.Field.Body>
+                                <UI.Form.Field>
+                                    <UI.Form.Label>Bond</UI.Form.Label>
+                                    <UI.Form.Control>
+                                        <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Bond" name="bond" value={ this.state.bond } />
+                                    </UI.Form.Control>
+                                </UI.Form.Field>
+                                <UI.Form.Field>
+                                    <UI.Form.Label>Bonding Information</UI.Form.Label>
+                                    <UI.Form.Control>
+                                        <UI.Form.Textarea onChange={ e => this.onChange( e ) } name="bondingInformation" value={ this.state.bondingInformation } />
+                                    </UI.Form.Control>
+                                </UI.Form.Field>
+                            </UI.Form.Field.Body>
+                        </UI.Form.Field>
+
+                        <p>View bond schedule <a href="../static/Bond Schedule.pdf" target="_blank">here</a>.</p>
+                        
+                        <UI.Button color="info" onClick={ e => this.handleGenerateClick( e, 'filingdecision' ) }><UI.Icon><span className="fas fa-file-pdf"/></UI.Icon><span>Generate Filing Decision</span></UI.Button>
+                        <UI.Button color="info" onClick={ e => this.handleGenerateClick( e, 'prelim' ) }><UI.Icon><span className="fas fa-file-pdf"/></UI.Icon><span>Generate Prelim</span></UI.Button>
+                        { this.state.showDvmBtn && <UI.Button color="info" onClick={ e => this.handleGenerateClick( e, 'dvm' ) }><UI.Icon><span className="fas fa-file-pdf"/></UI.Icon><span>Generate DVM Complaint</span></UI.Button> }
+                    </div>
+                }
+            </UI.Container>

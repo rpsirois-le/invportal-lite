@@ -1,0 +1,114 @@
+import React from 'react'
+import * as UI from 'react-bulma-components'
+import moment from 'moment-timezone'
+import lunr from 'lunr'
+
+// https://jsy-lang.github.io/#GYVwdgxgLglg9mABAQwCaoCowLYFM4hQCiAbrmFABQB0tyATgOYDOAlIgFwcBQii9uKCHpJmgrHgJREAARRNm1AA5wllVgBpEtagxbcDaTDnyFS5aXICsABhsbuASBkBeAHyIoACxiKxUAGUoZChcWQ5EACMoMAARXEiCSFwI4GQAGzFuIA
+function addTimeoutEvent(...args) ::
+  return setTimeout @ args.pop(), ...args
+
+export default class ViewGlossary extends React.Component ::
+    constructor( props ) ::
+        super @ props
+
+        this.index = null
+        this.glossary = null
+
+        this.state = ::
+            term: ''
+            , title: '(Search -  then select a result.)'
+            , language: ''
+            , results: []
+
+        this.refreshGlossary()
+        this.refreshGlossaryIndex()
+
+    refreshGlossary() ::
+        fetch( '/glossary', { credentials: 'same-origin' } )
+            .then @ res => ::
+                if res.ok ::
+                    res.json().then @ data => ::
+                        this.glossary = data
+                        console.log @ 'Data ready.'
+
+    refreshGlossaryIndex() ::
+        fetch( '/glossaryIndex', { credentials: 'same-origin' } )
+            .then @ res => ::
+                if res.ok ::
+                    res.json().then @ data => ::
+                        this.index = lunr.Index.load @ data
+                        console.log @ 'Index ready.'
+
+    handleSearchResultClick( e, result ) ::
+        this.setState @:
+            title: result.title
+            , language: result.language
+
+    onTermChange( e ) ::
+        const term = e.target.value
+        
+        this.setState @:
+            term
+
+        const metadata = this.index.search @ term
+
+        const results = this.glossary.filter @ doc => ::
+            let isMatch = false
+
+            metadata.forEach @ meta => ::
+                if meta.ref == doc.title ::
+                    isMatch = true
+                    doc.score = meta.score
+
+            return isMatch
+
+        results.sort @ ( a, b ) => :: return b.score - a.score
+
+        if results.length ::
+            const topResult = results[0]
+
+            if topResult ::
+                this.setState @:
+                    title: topResult.title
+                    , language: topResult.language
+                    , results
+
+    render() ::
+        const resultsHtml = this.state.results.map @ ea => ::
+            return @
+                <div key={ ea.title }>
+                    <a href="#" onClick={ e => this.handleSearchResultClick( e, ea ) }>{ ea.title }</a>
+                </div>
+
+        return @
+            <UI.Container>
+                <UI.Notification color="info">
+                    <p>
+                        <strong>Help improve this page!</strong> Send me new glossary items or improvements to existing items at <a href="mailto:robertsirois@elpasoco.com">robertsirois@elpasoco.com</a>.
+                    </p>
+                </UI.Notification>
+
+                <UI.Heading size={1}>Glossary</UI.Heading>
+
+                <UI.Form.Field>
+                    <UI.Form.Label>Search</UI.Form.Label>
+                    <UI.Form.Control>
+                        <UI.Form.Input onChange={ e => this.onTermChange( e ) } type="search" placeholder="Search glossary..." name="term" value={ this.state.term } />
+                    </UI.Form.Control>
+                </UI.Form.Field>
+
+                <div>{ resultsHtml }</div>
+
+                <br />
+
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>{ this.state.title }</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Textarea onChange={ e => this.onChange( e ) } placeholder="..." name="language" value={ this.state.language } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+            </UI.Container>

@@ -1,0 +1,38 @@
+import React from 'react'
+import * as UI from 'react-bulma-components'
+
+export default class ConfirmModal extends React.Component ::
+    static defaultProps = ::
+        active: false
+        , title: 'Are you sure?'
+
+    constructor( props ) ::
+        super @ props
+
+        this.state = ::
+            active: props.active
+
+    componentWillReceiveProps( newProps ) ::
+        if newProps.hasOwnProperty @ 'active' ::
+            this.setState @:
+                active: newProps.active
+
+    handleClose( e ) ::
+        this.setState @:
+            active: false
+
+    render() ::
+        return @
+            <UI.Modal closeOnEsc={false} showClose={false} show={ this.state.active } onClose={ e => this.handleClose( e ) }>
+                <UI.Modal.Card>
+                    <UI.Modal.Card.Head showClose={false}>
+                        <UI.Modal.Card.Title>{ this.props.title }</UI.Modal.Card.Title>
+                    </UI.Modal.Card.Head>
+                    <UI.Modal.Card.Body>
+                    </UI.Modal.Card.Body>
+                    <UI.Modal.Card.Foot>
+                        <UI.Button color="success" onClick={ e => this.props.yes( e ) }><UI.Icon><span className="fas fa-check" /></UI.Icon><span>Yes</span></UI.Button>
+                        <UI.Button color="danger" onClick={ e => this.props.no( e ) }><UI.Icon><span className="fas fa-times" /></UI.Icon><span>No</span></UI.Button>
+                    </UI.Modal.Card.Foot>
+                </UI.Modal.Card>
+            </UI.Modal>

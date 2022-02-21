@@ -1,0 +1,188 @@
+import React from 'react'
+import * as UI from 'react-bulma-components'
+import moment from 'moment-timezone'
+
+export default class ViewNonDisclosureOrder extends React.Component ::
+    constructor( props ) ::
+        super @ props
+
+        window.testApp = () => ::
+            this.setState @:
+                crn: '19-TEST'
+                , filename: 'testNonDisclosure'
+                , deputy: 'Robert Sirois'
+                , eid: '13025'
+                , title: 'Detective'
+                , company: 'Google'
+                , address: 'Attn: Custodian of Records 1600 Amphitheatre Parkway Mountain View, CA 94043'
+                , accounts: 'blah@gmail.com, blah2@gmail.com'
+
+        this.state = ::
+            // app stuff
+            addItemBtnDebounce: false
+            // non-disclosure stuff
+            , crn: ''
+            , crnErr: false
+
+            , filename: ''
+            , filenameErr: false
+
+            , deputy: ''
+            , deputyErr: false
+
+            , eid: ''
+            , eidErr: false
+
+            , agency: 'El Paso County Sheriff\'s Office'
+            , agencyErr: false
+
+            , title: 'Detective'
+            , titleErr: false
+
+            , company: ''
+            , companyErr: false
+
+            , address: ''
+            , addressErr: ''
+
+            , accounts: ''
+            , accountsErr: ''
+
+    onChange( e ) ::
+        const val = e.target.type == 'checkbox' ? e.target.checked : e.target.value
+
+        this.setState @:
+            [e.target.name]: val
+
+    handleGenerateClick( e ) ::
+        let formData = new FormData()
+        let isErr = false
+
+        const requiredFields = [ 'crn', 'filename', 'deputy', 'eid', 'agency', 'title', 'company', 'address', 'accounts' ]
+
+        requiredFields.forEach @ field => ::
+            if !this.state[field] ::
+                isErr = true
+                this.setState @:
+                    [`${ field }Err`]: 'Required'
+            else ::
+                this.setState @:
+                    [`${ field }Err`]: false
+
+                formData.append @ field, this.state[field]
+
+        /*
+        const checkboxes = []
+
+        checkboxes.forEach @ field => ::
+            formData.append @ field, this.state[field]
+        */
+
+        if !isErr ::
+            this.setState @:
+                processing: true
+
+            fetch @ '/nonDisclosureOrder', ::
+                method: 'post'
+                , body: formData
+            .then @ res => res.json().then @ data => ::
+                this.setState @:
+                    processing: false
+
+                window.open @ `/download/${ data.filename }`, '_blank'
+
+    render() ::
+        return @
+            <UI.Container>
+                <UI.Heading size={1}>Non-Disclosure Order Form</UI.Heading>
+                
+                <UI.Heading size={3} style={{ margin: 10 }}><UI.Icon color="info"><span className="fas fa-info"/></UI.Icon><span style={{ margin: 10 }}>General Information</span></UI.Heading>
+
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Case Number</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Case Number" name="crn" value={ this.state.crn } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Filename</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Filename" name="filename" value={ this.state.filename } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Deputy Name</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Deputy Name" name="deputy" value={ this.state.deputy } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>EID/IBM</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="EID/IBM" name="eid" value={ this.state.eid } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Title</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Title" name="title" value={ this.state.title } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                        {/*
+                        <UI.Form.Field>
+                            <UI.Form.Label>Agency</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="agency" name="agency" value={ this.state.agency } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                        */}
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Company Name</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input className={ this.state.chargeErr ? 'is-danger' : '' } onChange={ e => this.onChange( e ) } type="text" placeholder="Company Name" name="charge" value={ this.state.company } />
+                            </UI.Form.Control>
+                            { this.state.companyErr && <p className='help is-danger'>{ this.state.companyErr }</p> }
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Company Address</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input className={ this.state.chargeErr ? 'is-danger' : '' } onChange={ e => this.onChange( e ) } type="text" placeholder="Company Address" name="charge" value={ this.state.address } />
+                            </UI.Form.Control>
+                            { this.state.addressErr && <p className='help is-danger'>{ this.state.addressErr }</p> }
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Accounts</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input className={ this.state.accountsErr ? 'is-danger' : '' } onChange={ e => this.onChange( e ) } type="text" placeholder="Accounts" name="charge" value={ this.state.accounts } />
+                            </UI.Form.Control>
+                            { this.state.accountsErr && <p className='help is-danger'>{ this.state.accountsErr }</p> }
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+
+
+                <UI.Button color="info" onClick={ e => this.handleGenerateClick( e ) }><UI.Icon><span className="fas fa-file-pdf"/></UI.Icon><span>Generate Order</span></UI.Button>
+            </UI.Container>

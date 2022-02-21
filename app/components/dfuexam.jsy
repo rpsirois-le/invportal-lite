@@ -1,0 +1,276 @@
+import React from 'react'
+import * as UI from 'react-bulma-components'
+import moment from 'moment-timezone'
+
+// https://jsy-lang.github.io/#GYVwdgxgLglg9mABAQwCaoCowLYFM4hQCiAbrmFABQB0tyATgOYDOAlIgFwcBQii9uKCHpJmgrHgJREAARRNm1AA5wllVgBpEtagxbcDaTDnyFS5aXICsABhsbuASBkBeAHyIoACxiKxUAGUoZChcWQ5EACMoMAARXEiCSFwI4GQAGzFuIA
+function addTimeoutEvent(...args) ::
+  return setTimeout @ args.pop(), ...args
+
+export default class ViewDfuForm extends React.Component ::
+    constructor( props ) ::
+        super @ props
+
+        window.testApp = () => ::
+            this.setState @:
+                filename: 'test_dfu_exam_request'
+                , baseUnit: 'dfu'
+                , deputy: 'Det. Sirois'
+                , crn: '20-TEST'
+                , offense: 'Homicide'
+                , subject: 'Test Person'
+                , isOwner: true
+                , isSuspect: true
+                , evidenceItem: '7'
+                , isWarrant: true
+                , warrantNo: '20-9999'
+                , passwords: '1234\n123456\n12345678\npassword'
+                , description: 'White iPhone 7 (A1660)'
+                , comments: 'Please get as much from Snapchat as possible. Thanks!'
+
+        const now = moment()
+
+        this.state = ::
+            // form stuff
+            filename: ''
+            , filenameErr: false
+
+            , baseUnit: false
+            , baseUnitErr: false
+
+            , date: now.format @ 'MM/DD/YY'
+            , time: now.format @ 'HHmm'
+
+            , deputy: ''
+            , deputyErr: false
+
+            , crn: ''
+            , crnErr: false
+
+            , offense: ''
+            , offenseErr: false
+
+            , subject: ''
+            , subjectErr: false
+
+            , isOwner: false
+            , isVictim: false
+            , isSuspect: false
+
+            , evidenceItem: ''
+            
+            , isFiled: false
+
+            , isWaiver: false
+            , isWarrant: false
+            , warrantNo: ''
+
+            , passwords: ''
+            , description: ''
+            , comments: ''
+
+    onChange( e ) ::
+        const val = e.target.type == 'checkbox' ? e.target.checked : e.target.value
+
+        this.setState @:
+            [e.target.name]: val
+
+    handleGenerateClick( e ) ::
+        let formData = new FormData()
+        let isErr = false
+
+        const requiredFields = [ 'filename', 'crn', 'deputy', 'offense', 'subject' ]
+
+        requiredFields.forEach @ field => ::
+            if !this.state[field] ::
+                isErr = true
+                this.setState @:
+                    [`${ field }Err`]: 'Required'
+            else ::
+                this.setState @:
+                    [`${ field }Err`]: false
+
+                formData.append @ field, this.state[field]
+
+        const checkboxes = [ 'isOwner', 'isVictim', 'isSuspect', 'isFiled', 'isWaiver', 'isWarrant' ]
+
+        checkboxes.forEach @ field => ::
+            formData.append @ field, this.state[field]
+
+        if !this.state.baseUnit ::
+            this.setState @:
+                baseUnitErr: 'Required'
+            isErr = true
+        else ::
+            this.setState @:
+                baseUnitErr: false
+
+        formData.append @ 'baseUnit', this.state.baseUnit
+        formData.append @ 'date', this.state.date
+        formData.append @ 'time', this.state.time
+        formData.append @ 'evidenceItem', this.state.evidenceItem
+        formData.append @ 'warrantNo', this.state.warrantNo
+
+        formData.append @ 'passwords', this.state.passwords
+        formData.append @ 'description', this.state.description
+        formData.append @ 'comments', this.state.comments
+
+        if !isErr ::
+            this.setState @:
+                processing: true
+
+            fetch @ '/dfuform', ::
+                method: 'post'
+                , body: formData
+            .then @ res => res.json().then @ data => ::
+                this.setState @:
+                    processing: false
+
+                window.open @ `/download/${ data.filename }`, '_blank'
+
+    render() ::
+        /* removed time field
+                        <UI.Form.Field>
+                            <UI.Form.Label>Time</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Time" name="time" value={ this.state.time } />
+                            </UI.Form.Control>
+                            { this.state.timeErr && <p className='help is-danger'>{ this.state.timeErr }</p> }
+                        </UI.Form.Field>
+        */
+        return @
+            <UI.Container>
+                <UI.Heading size={1}>DFU Examination Request</UI.Heading>
+                
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Filename</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Filename" name="filename" value={ this.state.filename } />
+                            </UI.Form.Control>
+                            { this.state.filenameErr && <p className='help is-danger'>{ this.state.filenameErr }</p> }
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Assigned Unit</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Radio onChange={ e => this.onChange( e ) } name="baseUnit" checked={ this.state.baseUnit == 'patrol' } value="patrol">&nbsp;Patrol</UI.Form.Radio>
+                                <UI.Form.Radio onChange={ e => this.onChange( e ) } name="baseUnit" checked={ this.state.baseUnit == 'mcu' } value="mcu">&nbsp;MCU</UI.Form.Radio>
+                                <UI.Form.Radio onChange={ e => this.onChange( e ) } name="baseUnit" checked={ this.state.baseUnit == 'svu' } value="svu">&nbsp;SVU</UI.Form.Radio>
+                                <UI.Form.Radio onChange={ e => this.onChange( e ) } name="baseUnit" checked={ this.state.baseUnit == 'fcu' } value="fcu">&nbsp;FCU</UI.Form.Radio>
+                                <UI.Form.Radio onChange={ e => this.onChange( e ) } name="baseUnit" checked={ this.state.baseUnit == 'ciu' } value="ciu">&nbsp;CIU</UI.Form.Radio>
+                                <UI.Form.Radio onChange={ e => this.onChange( e ) } name="baseUnit" checked={ this.state.baseUnit == 'dfu' } value="dfu">&nbsp;DFU</UI.Form.Radio>
+                            </UI.Form.Control>
+                            { this.state.baseUnitErr && <p className='help is-danger'>{ this.state.baseUnitErr }</p> }
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Date</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Date" name="date" value={ this.state.date } />
+                            </UI.Form.Control>
+                            { this.state.dateErr && <p className='help is-danger'>{ this.state.dateErr }</p> }
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Requestor</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Requestor" name="deputy" value={ this.state.deputy } />
+                            </UI.Form.Control>
+                            { this.state.deputyErr && <p className='help is-danger'>{ this.state.deputyErr }</p> }
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Case Number</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Case Number" name="crn" value={ this.state.crn } />
+                            </UI.Form.Control>
+                            { this.state.crnErr && <p className='help is-danger'>{ this.state.crnErr }</p> }
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Offense</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Offense" name="offense" value={ this.state.offense } />
+                            </UI.Form.Control>
+                            { this.state.offenseErr && <p className='help is-danger'>{ this.state.offenseErr }</p> }
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Subject</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Subject" name="subject" value={ this.state.subject } />
+                            </UI.Form.Control>
+                            { this.state.subjectErr && <p className='help is-danger'>{ this.state.subjectErr }</p> }
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Subject Type</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="isOwner" checked={ this.state.isOwner }>&nbsp;Owner</UI.Form.Checkbox>
+                                <br />
+                                <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="isVictim" checked={ this.state.isVictim }>&nbsp;Victim</UI.Form.Checkbox>
+                                <br />
+                                <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="isSuspect" checked={ this.state.isSuspect }>&nbsp;Suspect</UI.Form.Checkbox>
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Evidence Item #</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Evidence Item #" name="evidenceItem" value={ this.state.evidenceItem } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Case Status</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="isFiled" checked={ this.state.isFiled }>&nbsp;Filed</UI.Form.Checkbox>
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Legal Authority</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="isWaiver" checked={ this.state.isWaiver }>&nbsp;Waiver</UI.Form.Checkbox>
+                                <br />
+                                <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="isWarrant" checked={ this.state.isWarrant }>&nbsp;Warrant</UI.Form.Checkbox>
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Warrant Number</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Warrant Number" name="warrantNo" value={ this.state.warrantNo } />
+                            </UI.Form.Control>
+                            <p className="help">(If applicable.)</p>
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+
+                <UI.Form.Field>
+                    <UI.Form.Label>Passwords / PIN Numbers</UI.Form.Label>
+                    <UI.Form.Control>
+                        <UI.Form.Textarea onChange={ e => this.onChange( e ) } name="passwords" value={ this.state.passwords } />
+                    </UI.Form.Control>
+                    <p className="help">List possibilities if unknown.</p>
+                </UI.Form.Field>
+
+                <UI.Form.Field>
+                    <UI.Form.Label>Device Description</UI.Form.Label>
+                    <UI.Form.Control>
+                        <UI.Form.Textarea onChange={ e => this.onChange( e ) } name="description" value={ this.state.description } />
+                    </UI.Form.Control>
+                </UI.Form.Field>
+
+                <UI.Form.Field>
+                    <UI.Form.Label>Additional Comments</UI.Form.Label>
+                    <UI.Form.Control>
+                        <UI.Form.Textarea onChange={ e => this.onChange( e ) } name="comments" value={ this.state.comments } />
+                    </UI.Form.Control>
+                    <p className="help">Specific requests, things the lab should be aware of, etc.</p>
+                </UI.Form.Field>
+
+                <UI.Button color="info" onClick={ e => this.handleGenerateClick( e ) }><UI.Icon><span className="fas fa-file-pdf"/></UI.Icon><span>Generate Form</span></UI.Button>
+            </UI.Container>

@@ -1,0 +1,587 @@
+import React from 'react'
+import * as UI from 'react-bulma-components'
+import moment from 'moment-timezone'
+
+// https://jsy-lang.github.io/#GYVwdgxgLglg9mABAQwCaoCowLYFM4hQCiAbrmFABQB0tyATgOYDOAlIgFwcBQii9uKCHpJmgrHgJREAARRNm1AA5wllVgBpEtagxbcDaTDnyFS5aXICsABhsbuASBkBeAHyIoACxiKxUAGUoZChcWQ5EACMoMAARXEiCSFwI4GQAGzFuIA
+function addTimeoutEvent(...args) ::
+  return setTimeout @ args.pop(), ...args
+
+export default class ViewSW extends React.Component ::
+    constructor( props ) ::
+        super @ props
+
+        window.testApp = () => ::
+            this.setState @:
+                crn: '19-TEST'
+                , filename: 'testsw'
+                , deputy: 'Robert Sirois'
+                , eid: '13025'
+                , title: 'Detective'
+                , location: '27 East Vermijo Avenue, Colorado Springs, CO 80903 - a gold plated, five story building with "Office of the Sheriff" posted on the front.'
+                , usc2705b: true
+                , stolen: true
+                , evidence: true
+                , aff: 'Blah\nBlah\nBlah\nBlah\nBlah'
+                , attachmentBItems: [ {description: 'Something'}, {description: 'Another thing'}, {description: 'Something else'} ]
+
+        this.state = ::
+            // app stuff
+            presets: {}
+            , locations: {}
+            , addItemBtnDebounce: false
+            , setLocBtnDebounce: false
+            , loc: 'none'
+            , preset: 'none'
+            , locHelp: false
+            , locHelpActive: false
+            , additionalSection: false
+            , sealSection: false
+            // pc stuff
+            , ori: 'CO0210000'
+            , oriErr: false
+
+            , crn: ''
+            , crnErr: false
+
+            , filename: ''
+            , filenameErr: false
+
+            , deputy: ''
+            , deputyErr: false
+
+            , eid: ''
+            , eidErr: false
+
+            , agency: 'El Paso County Sheriff\'s Office'
+            , agencyErr: false
+
+            , title: 'Detective'
+            , titleErr: false
+
+            , division: 'Investigations'
+            , divisionErr: false
+
+            , location: ''
+            , locationErr: false
+
+            , usc2705b: false
+
+            , stolen: false
+            , designedForCrime: false
+            , usedForCrime: false
+            , illegal: false
+            , evidence: false
+            , statuteAuthorizesSeizure: false
+            , hazard: false
+            , detectWantedPerson: false
+
+            , aff: ''
+
+            , attachmentBItems: []
+            , attachmentBItemsErr: false
+
+            // roe stuff
+            , executionDate: moment().format @ 'YYYY-MM-DD'
+            , executionDateErr: false
+            , warrantNo: ''
+            , warrantNoErr: false
+
+            // seal stuff
+            , dda: ''
+            , ddaErr: false
+
+        this.refreshPresets()
+        this.refreshLocations()
+
+    refreshPresets() ::
+        fetch( '/presets', { credentials: 'same-origin' } )
+            .then @ res => ::
+                if res.ok ::
+
+                    res.json().then @ data => ::
+                        const comparer = new Intl.Collator( 'en' ).compare
+
+                        let sortedPresets = Object.keys( data )
+                            .sort @ ( a, b ) => ::
+                                return comparer @ data[a].label, data[b].label
+                            .reduce @ (( prev, cur, i ) => ::
+                                prev[i] = data[cur]
+                                return prev
+                            , {})
+
+                        this.setState @ { presets: sortedPresets }
+
+    refreshLocations() ::
+        fetch( '/locations', { credentials: 'same-origin' } )
+            .then @ res => ::
+                if res.ok ::
+                    res.json().then @ data => this.setState @ { locations: data }
+
+    onChange( e ) ::
+        const val = e.target.type == 'checkbox' ? e.target.checked : e.target.value
+
+        if e.target.name.startsWith @ 'attachmentBItems' ::
+            let idx, key
+            let vars = e.target.name.match @ /\[.*?\]/g
+
+            vars.map @ ( v, i ) => ::
+                if i == 0 ::
+                    idx = v
+                    idx = idx.replace @ '[', ''
+                    idx = idx.replace @ ']', ''
+                    idx = parseInt @ idx
+                else if i == 1 ::
+                    key = v
+                    key = key.replace @ '[', ''
+                    key = key.replace @ ']', ''
+
+            this.setState @ state => ::
+                const attachmentBItems = this.state.attachmentBItems.map @ ( b, j ) => ::
+                    if idx == j ::
+                        b[key] = val
+                        return b
+                    else ::
+                        return b
+                return @:
+                    attachmentBItems
+        else ::
+            this.setState @:
+                [e.target.name]: val
+
+    handleSetLocBtnClick( e ) ::
+        if this.state.loc != 'none' ::
+            const l = this.state.locations[this.state.loc]
+
+            this.setState @:
+                location: l.location
+                , locHelp: l.service
+
+        this.setState @:
+            setLocBtnDebounce: true
+            , loc: 'none'
+
+        addTimeoutEvent @ 500,
+            @ () => this.setState @: setLocBtnDebounce: false
+
+    handleAddItemBtnClick( e ) ::
+        if this.state.preset != 'none' ::
+            this.state.presets[this.state.preset].strings.forEach @ str => ::
+                this.state.attachmentBItems.push @:
+                    description: str
+        else ::
+            this.state.attachmentBItems.push @:
+                description: ''
+
+        this.setState @:
+            addItemBtnDebounce: true
+            , preset: 'none'
+
+        addTimeoutEvent @ 500,
+            @ () => this.setState @: addItemBtnDebounce: false
+
+    handleDeleteAttachmentBItem( e, idx ) ::
+        this.setState @:
+            attachmentBItems: this.state.attachmentBItems.filter @ ( item, i ) => i != idx
+            
+    handleGenerateClick( e ) ::
+        let formData = new FormData()
+        let isErr = false
+
+        const requiredFields = [ 'ori', 'crn', 'filename', 'deputy', 'eid', 'agency', 'title', 'division', 'location' ]
+
+        formData.append @ 'affidavit', this.state.aff
+
+        requiredFields.forEach @ field => ::
+            if !this.state[field] ::
+                isErr = true
+                this.setState @:
+                    [`${ field }Err`]: 'Required'
+            else ::
+                this.setState @:
+                    [`${ field }Err`]: false
+
+                formData.append @ field, this.state[field]
+
+        const checkboxes = [ 'stolen', 'designedForCrime', 'usedForCrime', 'illegal', 'evidence', 'statuteAuthorizesSeizure', 'hazard', 'detectWantedPerson', 'usc2705b' ]
+
+        checkboxes.forEach @ field => ::
+            formData.append @ field, this.state[field]
+
+        formData.append @ 'attachmentBItems', JSON.stringify @ this.state.attachmentBItems
+
+        if !isErr ::
+            this.setState @:
+                processing: true
+
+            fetch @ '/sw', ::
+                method: 'post'
+                , body: formData
+            .then @ res => res.json().then @ data => ::
+                this.setState @:
+                    processing: false
+
+                window.open @ `/download/${ data.filename }`, '_blank'
+
+    handleIncludeRoeClick( e ) ::
+        this.setState @:
+            additionalSection: true
+
+    handleIncludeSealClick( e ) ::
+        this.setState @:
+            sealSection: true
+
+    handleGenerateRoeClick( e ) ::
+        let formData = new FormData()
+        let isErr = false
+
+        const requiredFields = [ 'crn', 'filename', 'deputy', 'eid', 'agency', 'title', 'division', 'location', 'warrantNo', 'executionDate' ]
+
+        requiredFields.forEach @ field => ::
+            if !this.state[field] ::
+                isErr = true
+                this.setState @:
+                    [`${ field }Err`]: 'Required'
+            else ::
+                this.setState @:
+                    [`${ field }Err`]: false
+
+                formData.append @ field, this.state[field]
+
+        formData.append @ 'items', JSON.stringify @ this.state.attachmentBItems
+
+        if !isErr ::
+            this.setState @:
+                processing: true
+
+            fetch @ '/roe', ::
+                method: 'post'
+                , body: formData
+            .then @ res => res.json().then @ data => ::
+                this.setState @:
+                    processing: false
+
+                window.open @ `/download/${ data.filename }`, '_blank'
+
+    handleGenerateSealClick( e ) ::
+        let formData = new FormData()
+        let isErr = false
+
+        const requiredFields = [ 'crn', 'filename', 'location', 'dda' ]
+
+        requiredFields.forEach @ field => ::
+            if !this.state[field] ::
+                isErr = true
+                this.setState @:
+                    [`${ field }Err`]: 'Required'
+            else ::
+                this.setState @:
+                    [`${ field }Err`]: false
+
+                formData.append @ field, this.state[field]
+
+        if !isErr ::
+            this.setState @:
+                processing: true
+
+            fetch @ '/swSeal', ::
+                method: 'post'
+                , body: formData
+            .then @ res => res.json().then @ data => ::
+                this.setState @:
+                    processing: false
+
+                window.open @ `/download/${ data.filename }`, '_blank'
+
+    handleLocHelpClose( e ) ::
+        this.setState @:
+            locHelpActive: false
+
+    render() ::
+        return @
+            <UI.Container>
+                <UI.Notification color="warning">
+                    <p>
+                        <strong>Help improve this page!</strong>
+                        <br />
+                        Please let me know what improvements or additions can be made to the glossary and attachment B presets. Remember, attachment B presets are composable so they can be broken up into smaller pieces (ie. generic cell phone records vs. specific AT&T records).
+                    </p>
+                </UI.Notification>
+
+                <UI.Heading size={1}>Search Warrant Form</UI.Heading>
+                
+                <UI.Heading size={3} style={{ margin: 10 }}><UI.Icon color="info"><span className="fas fa-info"/></UI.Icon><span style={{ margin: 10 }}>General Information</span></UI.Heading>
+
+                {/*
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>ORI</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="ORI" name="ori" value={ this.state.ori } />
+                            </UI.Form.Control>
+                            { this.state.oriErr && <p className='help is-danger'>{ this.state.oriErr }</p> }
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                */}
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Case Number</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Case Number" name="crn" value={ this.state.crn } />
+                            </UI.Form.Control>
+                            { this.state.crnErr && <p className='help is-danger'>{ this.state.crnErr }</p> }
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Filename</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Filename" name="filename" value={ this.state.filename } />
+                            </UI.Form.Control>
+                            { this.state.filenameErr && <p className='help is-danger'>{ this.state.filenameErr }</p> }
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Deputy Name</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Deputy Name" name="deputy" value={ this.state.deputy } />
+                            </UI.Form.Control>
+                            { this.state.deputyErr && <p className='help is-danger'>{ this.state.deputyErr }</p> }
+                        </UI.Form.Field>
+                        <UI.Form.Field>
+                            <UI.Form.Label>EID/IBM</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="EID/IBM" name="eid" value={ this.state.eid } />
+                            </UI.Form.Control>
+                            { this.state.eidErr && <p className='help is-danger'>{ this.state.eidErr }</p> }
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Title</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Title" name="title" value={ this.state.title } />
+                            </UI.Form.Control>
+                            { this.state.titleErr && <p className='help is-danger'>{ this.state.titleErr }</p> }
+                        </UI.Form.Field>
+                        {/*
+                        <UI.Form.Field>
+                            <UI.Form.Label>Agency</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="agency" name="agency" value={ this.state.agency } />
+                            </UI.Form.Control>
+                            { this.state.agencyErr && <p className='help is-danger'>{ this.state.agencyErr }</p> }
+                        </UI.Form.Field>
+                        */}
+                        <UI.Form.Field>
+                            <UI.Form.Label>Division</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Division" name="division" value={ this.state.division } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                {/*
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Division</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Division" name="division" value={ this.state.division } />
+                            </UI.Form.Control>
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                */}
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="usc2705b" checked={ this.state.usc2705b }>&nbsp;Include 18 U.S.C. § 2705 non-disclosure requirement?</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+
+                <UI.Heading size={3} style={{ margin: 10 }}><UI.Icon color="info"><span className="fas fa-user"/></UI.Icon><span style={{ margin: 10 }}>Location and Purpose</span></UI.Heading>
+
+                <UI.Form.Field kind="addons">
+                    <UI.Form.Control>
+                        <UI.Button disabled={this.state.setLocBtnDebounce || this.state.loc == 'none'} onClick={ e => this.handleSetLocBtnClick( e ) }><UI.Icon><span className="fas fa-map-marked-alt"/></UI.Icon><span>Set Location</span></UI.Button>
+                    </UI.Form.Control>
+                    <UI.Form.Control>
+                        <UI.Form.Select onChange={ e => this.onChange( e ) } name="loc" value={ this.state.loc }>
+                            <option value="none">-- Find Location --</option>
+                            { Object.keys( this.state.locations ).map @ ( key, idx ) => ::
+                                return @
+                                    <option key={ `locOpt${ idx }` } value={ key }>{ this.state.locations[key].label }</option>
+                            }
+                        </UI.Form.Select>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+                <a href="https://www.search.org/resources/isp-list/" target="_blank">Click here for a list of online content provider addresses.</a>
+                <br />
+                <a href="#" style={{ visibility: this.state.locHelp ? 'visible' : 'hidden' }} onClick={ e => this.setState({ locHelpActive: true }) }>Where do I send the warrant?</a>
+                <UI.Form.Field horizontal>
+                    <UI.Form.Field.Body>
+                        <UI.Form.Field>
+                            <UI.Form.Label>Description of Location to be Searched</UI.Form.Label>
+                            <UI.Form.Control>
+                                <UI.Form.Textarea onChange={ e => this.onChange( e ) } placeholder="Location" name="location" value={ this.state.location } />
+                            </UI.Form.Control>
+                            { this.state.locationErr && <p className='help is-danger'>{ this.state.locationErr }</p> }
+                        </UI.Form.Field>
+                    </UI.Form.Field.Body>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="stolen" checked={ this.state.stolen }>&nbsp;Is stolen or embezzeled, or</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="designedForCrime" checked={ this.state.designedForCrime }>&nbsp;Is designed or intended for use in committing a criminal offense, or</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="usedForCrime" checked={ this.state.usedForCrime }>&nbsp;Is or has been used as a means of committing a criminal offense, or</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="illegal" checked={ this.state.illegal }>&nbsp;Is illegal to possess, or</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="evidence" checked={ this.state.evidence }>&nbsp;Would be material evidence in a subsequent criminal prosecution, or required, authorized or permitted by a statute of the State of Colorado, or</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="statuteAuthorizesSeizure" checked={ this.state.statuteAuthorizesSeizure }>&nbsp;Is a person, property or thing the seizure of which is expressly required, authorized or permitted by a statute of the State of Colorado, or</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="hazard" checked={ this.state.hazard }>&nbsp;Is kept, stored, transported, sold, dispensed, or possessed in violation of a statute of the State of Colorado under circumstances involving serious threat to the public safety, or order, or to the public health, or</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+                <UI.Form.Field>
+                    <UI.Form.Control>
+                        <UI.Form.Checkbox onChange={ e => this.onChange( e ) } name="detectWantedPerson" checked={ this.state.detectWantedPerson }>&nbsp;That would aid in the detection of the whereabouts of or in the apprehension of a person for whom a lawful arrest order is outstanding.</UI.Form.Checkbox>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+
+                <UI.Heading size={3} style={{ margin: 10 }}><UI.Icon color="info"><span className="fas fa-user-friends"/></UI.Icon><span style={{ margin: 10 }}>Attachment B</span></UI.Heading>
+
+                { this.state.attachmentBItems.map @ ( item, idx ) => ::
+                    return @
+                        <UI.Box key={`attachmentBItem${idx}`} style={{ marginBottom: '1rem', padding: '0.5rem' }}>
+                            <UI.Heading size={4} className="is-pulled-left">Item {`${idx+1}`}</UI.Heading>
+                            <UI.Button className="is-danger is-pulled-right" onClick={ e => this.handleDeleteAttachmentBItem( e, idx ) }><UI.Icon size="small"><span className="fas fa-trash"/></UI.Icon></UI.Button>
+                            <span className="is-clearfix"/>
+                            <UI.Form.Field horizontal>
+                                <UI.Form.Field.Body>
+                                    <UI.Form.Field>
+                                        <UI.Form.Control>
+                                            <UI.Form.Textarea rows={1} onChange={ e => this.onChange( e ) } name={`attachmentBItems[${idx}][description]`} value={ item.description } />
+                                        </UI.Form.Control>
+                                    </UI.Form.Field>
+                                </UI.Form.Field.Body>
+                            </UI.Form.Field>
+                        </UI.Box>
+                }
+
+                <UI.Form.Field kind="addons">
+                    <UI.Form.Control>
+                        <UI.Button disabled={this.state.addItemBtnDebounce} onClick={ e => this.handleAddItemBtnClick( e ) }><UI.Icon><span className="fas fa-plus"/></UI.Icon><span>Add Item</span></UI.Button>
+                    </UI.Form.Control>
+                    <UI.Form.Control>
+                        <UI.Form.Select onChange={ e => this.onChange( e ) } name="preset" value={ this.state.preset }>
+                            <option value="none">(Blank item.)</option>
+                            { Object.keys( this.state.presets ).map @ ( key, idx ) => ::
+                                return @
+                                    <option key={ `bTplOpt${ idx }` } value={ key }>{ this.state.presets[key].label }</option>
+                            }
+                        </UI.Form.Select>
+                    </UI.Form.Control>
+                </UI.Form.Field>
+
+                <a href="/#glossary" target="_blank">Looking for specific warrant language? Click here! (Opens a new tab.)</a>
+                <br />
+
+                <UI.Heading size={3} style={{ margin: 10 }}><UI.Icon color="info"><span className="fas fa-gavel"/></UI.Icon><span style={{ margin: 10 }}>Affidavit</span></UI.Heading>
+
+                <UI.Form.Field>
+                    <UI.Form.Label>Affidavit</UI.Form.Label>
+                    <UI.Form.Control>
+                        <UI.Form.Textarea onChange={ e => this.onChange( e ) } name="aff" value={ this.state.aff } />
+                    </UI.Form.Control>
+                    <p className="help">Optional - leave this blank and paste in your affidavit after downloading.</p>
+                </UI.Form.Field>
+
+
+                <UI.Button color="info" onClick={ e => this.handleGenerateClick( e ) }><UI.Icon><span className="fas fa-file-pdf"/></UI.Icon><span>Generate Warrant</span></UI.Button>
+                <UI.Button onClick={ e => this.handleIncludeRoeClick( e ) }><UI.Icon><span className="fas fa-plus"/></UI.Icon><span>Include ROE</span></UI.Button>
+                <UI.Button onClick={ e => this.handleIncludeSealClick( e ) }><UI.Icon><span className="fas fa-plus"/></UI.Icon><span>Include Seal</span></UI.Button>
+
+                { this.state.additionalSection &&
+                    <div>
+                        <UI.Form.Field horizontal>
+                            <UI.Form.Field.Body>
+                                <UI.Form.Field>
+                                    <UI.Form.Label>Execution Date</UI.Form.Label>
+                                    <UI.Form.Control>
+                                        <UI.Form.Input onChange={ e => this.onChange( e ) } type="date" name='executionDate' value={ this.state.executionDate } />
+                                    </UI.Form.Control>
+                                    { this.state.executionDateErr && <p className='help is-danger'>{ this.state.executionDateErr }</p> }
+                                </UI.Form.Field>
+                                <UI.Form.Field>
+                                    <UI.Form.Label>Court Warrant Number</UI.Form.Label>
+                                    <UI.Form.Control>
+                                        <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Court Warrant Number" name='warrantNo' value={ this.state.warrantNo } />
+                                    </UI.Form.Control>
+                                    { this.state.warrantNoErr && <p className='help is-danger'>{ this.state.warrantNoErr }</p> }
+                                </UI.Form.Field>
+                            </UI.Form.Field.Body>
+                        </UI.Form.Field>
+                        
+                        <UI.Button color="info" onClick={ e => this.handleGenerateRoeClick( e ) }><UI.Icon><span className="fas fa-file-pdf"/></UI.Icon><span>Generate ROE</span></UI.Button>
+                    </div>
+                }
+
+                { this.state.sealSection &&
+                    <div>
+                        <UI.Form.Field horizontal>
+                            <UI.Form.Field.Body>
+                                <UI.Form.Field>
+                                    <UI.Form.Label>Deputy District Attorney</UI.Form.Label>
+                                    <UI.Form.Control>
+                                        <UI.Form.Input onChange={ e => this.onChange( e ) } type="text" placeholder="Deputy District Attorney" name='dda' value={ this.state.dda } />
+                                    </UI.Form.Control>
+                                    { this.state.ddaErr && <p className='help is-danger'>{ this.state.ddaErr }</p> }
+                                </UI.Form.Field>
+                            </UI.Form.Field.Body>
+                        </UI.Form.Field>
+                        
+                        <UI.Button color="info" onClick={ e => this.handleGenerateSealClick( e ) }><UI.Icon><span className="fas fa-file-pdf"/></UI.Icon><span>Generate Seal</span></UI.Button>
+                    </div>
+                }
+
+                <UI.Modal closeOnEsc={false} showClose={true} show={ this.state.locHelpActive } onClose={ e => this.handleLocHelpClose( e ) }>
+                    <UI.Modal.Card>
+                        <UI.Modal.Card.Head showClose={true} onClose={ e => this.handleLocHelpClose( e ) }>
+                            <UI.Modal.Card.Title>Location Service Help</UI.Modal.Card.Title>
+                        </UI.Modal.Card.Head>
+                        <UI.Modal.Card.Body>
+                            <div dangerouslySetInnerHTML={{ __html: this.state.locHelp }}></div>
+                        </UI.Modal.Card.Body>
+                        <UI.Modal.Card.Foot>
+                            <UI.Button color="danger" onClick={ e => this.handleLocHelpClose( e ) }><UI.Icon><span className="fas fa-times" /></UI.Icon><span>Close</span></UI.Button>
+                        </UI.Modal.Card.Foot>
+                    </UI.Modal.Card>
+                </UI.Modal>
+            </UI.Container>
