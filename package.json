@@ -1,5 +1,5 @@
 {
-  "name": "Investigations Portal - Lite",
+  "name": "Investigations-Portal-Lite",
   "version": "1.0.0",
   "description": "Builds docx reports using templates, presets, and form inputs.",
   "main": "main.js",

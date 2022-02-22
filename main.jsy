@@ -1,6 +1,8 @@
 const path = require @ 'path'
 const fs = require @ 'fs'
 
+process.env.NODE_ENV = 'production'
+
 const resourcePath = !process.env.NODE_ENV || process.env.NODE_ENV == 'production' ? process.resourcePath : __dirname
 
 const uuid = require( 'uuidv4' ).default
