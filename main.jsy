@@ -1,9 +1,7 @@
 const path = require @ 'path'
 const fs = require @ 'fs'
 
-process.env.NODE_ENV = 'production'
-
-const resourcePath = !process.env.NODE_ENV || process.env.NODE_ENV == 'production' ? process.resourcePath : __dirname
+const resourcePath = process.resourcesPath || __dirname
 
 const uuid = require( 'uuidv4' ).default
 const express = require @ 'express'
@@ -114,7 +112,7 @@ const startServer = @=> ::
                 //, width: screen.width
                 //, height: screen.height
                 webPreferences: @{}
-                    preload: path.join @ resourcePath, 'preload.js'
+                    preload: path.join @ __dirname, 'preload.js'
 
             win.maximize()
             win.show()

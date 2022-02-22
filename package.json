@@ -56,6 +56,13 @@
     },
     "extraFiles": [
       {
+        "from": "build",
+        "to": "resources/build",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
         "from": "docx",
         "to": "resources/docx",
         "filter": [
