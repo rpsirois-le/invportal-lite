@@ -27,7 +27,7 @@ const processFormFields = @\ req, cb ::
     req.pipe @ busboy
 
 app.get @ '/', ( req, res ) => ::
-    res.sendFile @ path.join @ resourcePath, 'build/index.html'
+    res.sendFile @ path.resolve @ resourcePath, 'build', 'index.html'
 
 app.get @ '/defaults', ( req, res ) => ::
     res.json @ defaults
@@ -45,7 +45,7 @@ app.get @ '/glossaryIndex', ( req, res ) => ::
     res.json @ glossaryIndex
 
 app.get @ '/download/:token', ( req, res ) => ::
-    const p = path.join @ resourcePath, 'output', req.params.token
+    const p = path.resolve @ resourcePath, 'output', req.params.token
     res.download @ p, () => ::
        fs.unlink @ p, err => ::
            if err :: console.error @ err
@@ -112,7 +112,7 @@ const startServer = @=> ::
                 //, width: screen.width
                 //, height: screen.height
                 webPreferences: @{}
-                    preload: path.join @ __dirname, 'preload.js'
+                    preload: path.resolve @ __dirname, 'preload.js'
 
             win.maximize()
             win.show()
@@ -136,7 +136,7 @@ const filesToLoad = @[]
     'json/glossaryIndex.json'
 
 Promise.all @ filesToLoad.map @ p => ::
-    return fs.promises.readFile( path.join( resourcePath, p ), 'utf-8' )
+    return fs.promises.readFile( path.resolve( resourcePath, p ), 'utf-8' )
         .then @ data => JSON.parse @ data.trim()
         .catch @ err => console.log @ err
 .then @ data => ::

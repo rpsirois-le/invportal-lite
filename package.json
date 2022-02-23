@@ -77,6 +77,13 @@
         ]
       },
       {
+        "from": "output",
+        "to": "resources/output",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
         "from": "static",
         "to": "resources/static",
         "filter": [

@@ -1,4 +1,4 @@
-const p = require @ 'path'
+const path = require @ 'path'
 const fs = require @ 'fs'
 
 const resourcePath = process.resourcesPath || __dirname
@@ -22,7 +22,7 @@ const parser = tag => ::
         get: s => expr @ s
 
 const generateReport = ( filename, data, res, resIsCb=false ) => ::
-    fs.readFile @ p.join( resourcePath, `docx/${ filename }.docx` ), 'binary', ( err, tpl ) => ::
+    fs.readFile @ path.resolve( resourcePath, 'docx', `${ filename }.docx` ), 'binary', ( err, tpl ) => ::
         if err ::
             console.log @ err
 
@@ -60,7 +60,7 @@ const generateReport = ( filename, data, res, resIsCb=false ) => ::
 
             const filename = `${ data.filename }.docx`
 
-            fs.writeFile @ p.join( resourcePath, 'output' , filename ), buffer, err => ::
+            fs.writeFile @ path.resolve( resourcePath, 'output' , filename ), buffer, err => ::
                 if err ::
                     console.log @ err
 
