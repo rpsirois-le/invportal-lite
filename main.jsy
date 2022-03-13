@@ -10,8 +10,8 @@ const bodyParser = require @ 'body-parser'
 
 const app = express()
 const dg = require @ './docxgen.js'
-app.use @ express.static @ './build'
-app.use @ '/static', express.static @ './static'
+app.use @ express.static @ path.resolve @ resourcePath, './build'
+app.use @ '/static', express.static @ path.resolve @ resourcePath, './static'
 
 let server, presets, locations, defaults, glossary, glossaryIndex
 
@@ -46,6 +46,7 @@ app.get @ '/glossaryIndex', ( req, res ) => ::
 
 app.get @ '/download/:token', ( req, res ) => ::
     const p = path.resolve @ resourcePath, 'output', req.params.token
+
     res.download @ p, () => ::
        fs.unlink @ p, err => ::
            if err :: console.error @ err
@@ -112,7 +113,7 @@ const startServer = @=> ::
                 //, width: screen.width
                 //, height: screen.height
                 webPreferences: @{}
-                    preload: path.resolve @ __dirname, 'preload.js'
+                    preload: 'preload.js'
 
             win.maximize()
             win.show()
